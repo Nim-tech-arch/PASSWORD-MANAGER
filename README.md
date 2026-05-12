@@ -266,9 +266,6 @@ Contributions are welcome! Please:
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## ⚖️ Disclaimer
-
-This password manager is provided as-is. While security best practices are implemented, no software is 100% secure. Use at your own risk. For critical passwords, consider using established password managers like 1Password, Bitwarden, or LastPass.
 
 ## 🙋 Support
 
