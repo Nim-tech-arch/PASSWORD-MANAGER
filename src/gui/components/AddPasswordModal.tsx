@@ -72,7 +72,7 @@ const AddPasswordModal: React.FC<AddPasswordModalProps> = ({ onClose, onAdd }) =
 
     setLoading(true);
     try {
-      onAdd({
+      await onAdd({
         service: formData.service.trim(),
         username: formData.username.trim(),
         email: formData.email.trim() || undefined,

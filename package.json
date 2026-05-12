@@ -2,7 +2,6 @@
   "name": "secure-password-manager",
   "version": "0.1.0",
   "description": "A secure password manager with CLI and GUI interfaces",
-  "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "build:react": "webpack --mode production",
@@ -14,7 +13,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "clean": "rm -rf dist build"
+    "clean": "rimraf dist build"
   },
   "dependencies": {
     "crypto": "^1.0.1",
@@ -24,8 +23,8 @@
     "commander": "^11.0.0",
     "chalk": "^5.3.0",
     "inquirer": "^8.2.5",
-    "password-validator": "^5.3.0",
     "electron": "^25.0.0",
+    "electron-is-dev": "^2.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "axios": "^1.4.0",
@@ -51,11 +50,11 @@
     "html-webpack-plugin": "^5.5.0",
     "concurrently": "^8.2.0",
     "wait-on": "^7.0.1",
+    "rimraf": "^5.0.0",
     "electron-builder": "^24.6.0",
     "@types/uuid": "^9.0.0",
     "@types/speakeasy": "^2.0.0"
   },
-  "main": "dist/main.js",
   "homepage": "./",
   "build": {
     "appId": "com.passwordmanager.app",

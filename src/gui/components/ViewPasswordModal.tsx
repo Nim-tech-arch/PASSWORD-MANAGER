@@ -59,7 +59,7 @@ const ViewPasswordModal: React.FC<ViewPasswordModalProps> = ({
     e.preventDefault();
     setLoading(true);
     try {
-      onUpdate({
+      await onUpdate({
         username: formData.username,
         password: formData.password,
         url: formData.url || undefined,

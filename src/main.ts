@@ -33,7 +33,7 @@ function createWindow(): void {
     },
   });
 
-  const startUrl = isDev ? 'http://localhost:8080' : `file://${path.join(__dirname, '../gui/index.html')}`;
+  const startUrl = isDev ? 'http://localhost:8080' : `file://${path.join(__dirname, 'gui', 'index.html')}`;
   mainWindow.loadURL(startUrl);
 
   // Open DevTools in development
