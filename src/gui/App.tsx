@@ -45,6 +45,7 @@ type AppState = 'setup' | 'login' | 'dashboard';
 const App: React.FC = () => {
   const [state, setState] = useState<AppState>('login');
   const [loading, setLoading] = useState(true);
+  const [authToken, setAuthToken] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
@@ -71,12 +72,14 @@ const App: React.FC = () => {
     setState('login');
   };
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (token: string) => {
+    setAuthToken(token);
     setIsAuthenticated(true);
     setState('dashboard');
   };
 
   const handleLogout = () => {
+    setAuthToken('');
     setIsAuthenticated(false);
     setState('login');
   };
@@ -98,7 +101,7 @@ const App: React.FC = () => {
     case 'login':
       return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
     case 'dashboard':
-      return isAuthenticated ? <Dashboard onLogout={handleLogout} /> : <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+      return isAuthenticated ? <Dashboard token={authToken} onLogout={handleLogout} /> : <LoginScreen onLoginSuccess={handleLoginSuccess} />;
     default:
       return <div>Unknown state</div>;
   }

@@ -45,6 +45,23 @@ npm run cli setup
 
 You'll be prompted to create a master password. **Remember this password!** You'll need it every time you use the password manager.
 
+### GUI Login
+
+The Electron GUI now authenticates through a local HTTP backend.
+
+- `POST http://localhost:3001/login`
+  - Request body: `{ "password": "<master-password>" }`
+  - Response: `{ "token": "<jwt>" }`
+- After login, the dashboard fetches password entries from an authenticated route using `Authorization: Bearer <token>`.
+
+Example using curl:
+
+```bash
+curl -X POST http://localhost:3001/login \
+  -H "Content-Type: application/json" \
+  -d '{"password":"your-master-password"}'
+```
+
 ### Add a Password
 
 ```bash

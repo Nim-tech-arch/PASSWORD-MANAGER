@@ -6,6 +6,8 @@
 import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
 import path from 'path';
 import isDev from 'electron-is-dev';
+import express, { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import DatabaseService from './core/database';
 import PasswordGenerator from './core/passwordGenerator';
 import PasswordValidator from './core/passwordValidator';
@@ -59,6 +61,111 @@ async function initializeDatabase(): Promise<void> {
     console.error('Database initialization failed:', error);
     dialog.showErrorBox('Error', 'Failed to initialize database');
   }
+}
+
+const AUTH_PORT = Number(process.env.AUTH_PORT || 3001);
+const AUTH_SECRET = process.env.JWT_SECRET || 'secure-password-manager-secret';
+
+async function createAuthServer(): Promise<void> {
+  const serverApp = express();
+  serverApp.use(express.json());
+  serverApp.use((req: Request, res: Response, next: NextFunction) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
+    next();
+  });
+
+  const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'Missing token' });
+    }
+
+    try {
+      jwt.verify(token, AUTH_SECRET);
+      next();
+    } catch (error) {
+      console.error('Token verification failed:', error);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+  };
+
+  serverApp.post('/login', async (req: Request, res: Response) => {
+    const { password } = req.body as { password?: string };
+
+    if (!password) {
+      return res.status(400).json({ error: 'Master password is required' });
+    }
+
+    try {
+      if (!db) throw new Error('Database not initialized');
+      const isValid = await db.verifyMasterPassword(password);
+      if (!isValid) {
+        return res.status(401).json({ error: 'Invalid master password' });
+      }
+
+      const token = jwt.sign({ authenticated: true }, AUTH_SECRET, { expiresIn: '30m' });
+      return res.json({ token });
+    } catch (error) {
+      console.error('Login error:', error);
+      return res.status(500).json({ error: error instanceof Error ? error.message : 'Internal server error' });
+    }
+  });
+
+  serverApp.get('/entries', authenticateToken, async (_req: Request, res: Response) => {
+    try {
+      if (!db) throw new Error('Database not initialized');
+      const entries = await db.getAllEntries();
+      return res.json(entries);
+    } catch (error) {
+      console.error('Get entries error:', error);
+      return res.status(500).json({ error: error instanceof Error ? error.message : 'Internal server error' });
+    }
+  });
+
+  serverApp.post('/entries', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      if (!db) throw new Error('Database not initialized');
+      const entry = req.body as Omit<PasswordEntry, 'id' | 'createdAt' | 'updatedAt'>;
+      const newEntry = await db.addEntry(entry);
+      return res.status(201).json(newEntry);
+    } catch (error) {
+      console.error('Add entry error:', error);
+      return res.status(500).json({ error: error instanceof Error ? error.message : 'Internal server error' });
+    }
+  });
+
+  serverApp.put('/entries/:id', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      if (!db) throw new Error('Database not initialized');
+      const updatedEntry = await db.updateEntry(req.params.id, req.body as Partial<PasswordEntry>);
+      return res.json(updatedEntry);
+    } catch (error) {
+      console.error('Update entry error:', error);
+      return res.status(500).json({ error: error instanceof Error ? error.message : 'Internal server error' });
+    }
+  });
+
+  serverApp.delete('/entries/:id', authenticateToken, async (req: Request, res: Response) => {
+    try {
+      if (!db) throw new Error('Database not initialized');
+      await db.deleteEntry(req.params.id);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('Delete entry error:', error);
+      return res.status(500).json({ error: error instanceof Error ? error.message : 'Internal server error' });
+    }
+  });
+
+  serverApp.listen(AUTH_PORT, () => {
+    console.log(`Authentication server listening on http://localhost:${AUTH_PORT}`);
+  });
 }
 
 // ============================================================================
@@ -315,6 +422,7 @@ ipcMain.handle('app:quit', async () => {
 
 app.on('ready', async () => {
   await initializeDatabase();
+  await createAuthServer();
   createWindow();
   createMenu();
 });

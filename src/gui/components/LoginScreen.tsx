@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import '../styles/auth.css';
 
 interface LoginScreenProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (token: string) => void;
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
@@ -27,12 +27,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     setLoading(true);
     try {
-      const isValid = await window.electronAPI.db.verifyMasterPassword(password);
-      if (isValid) {
-        onLoginSuccess();
+      const response = await fetch('http://localhost:3001/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.token) {
+        onLoginSuccess(data.token);
       } else {
         setAttempts((prev) => prev + 1);
-        setError('Incorrect master password');
+        setError(data.error || 'Incorrect master password');
         setPassword('');
 
         if (attempts >= 3) {

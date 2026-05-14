@@ -12,10 +12,11 @@ import GeneratorModal from './GeneratorModal';
 import '../styles/dashboard.css';
 
 interface DashboardProps {
+  token: string;
   onLogout: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
+const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
   const [entries, setEntries] = useState<PasswordEntry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<PasswordEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,11 +37,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     filterEntries();
   }, [entries, searchQuery]);
 
+  const authFetch = async (url: string, init: RequestInit = {}) => {
+    const response = await fetch(`http://localhost:3001${url}`, {
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...(init.headers || {}),
+      },
+      ...init,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Request failed');
+    }
+    return data;
+  };
+
+  const parseEntryDates = (entry: any): PasswordEntry => ({
+    ...entry,
+    createdAt: new Date(entry.createdAt),
+    updatedAt: new Date(entry.updatedAt),
+    lastUsed: entry.lastUsed ? new Date(entry.lastUsed) : undefined,
+  });
+
   const loadEntries = async () => {
     try {
       setLoading(true);
-      const allEntries = await window.electronAPI.db.getAllEntries();
-      setEntries(allEntries);
+      const allEntries = await authFetch('/entries');
+      setEntries(allEntries.map(parseEntryDates));
       setError('');
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to load entries');
@@ -70,8 +96,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
   const handleAddPassword = async (newEntry: Omit<PasswordEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const added = await window.electronAPI.db.addEntry(newEntry);
-      setEntries([...entries, added]);
+      const added = await authFetch('/entries', {
+        method: 'POST',
+        body: JSON.stringify(newEntry),
+      });
+      setEntries([...entries, parseEntryDates(added)]);
       setShowAddModal(false);
       setError('');
     } catch (error) {
@@ -88,8 +117,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     if (!selectedEntry) return;
 
     try {
-      const updated = await window.electronAPI.db.updateEntry(selectedEntry.id, updates);
-      setEntries(entries.map((e) => (e.id === updated.id ? updated : e)));
+      const updated = await authFetch(`/entries/${selectedEntry.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+      setEntries(entries.map((e) => (e.id === updated.id ? parseEntryDates(updated) : e)));
       setShowViewModal(false);
       setSelectedEntry(null);
       setError('');
@@ -102,7 +134,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     if (!window.confirm('Are you sure you want to delete this password?')) return;
 
     try {
-      await window.electronAPI.db.deleteEntry(id);
+      await authFetch(`/entries/${id}`, {
+        method: 'DELETE',
+      });
       setEntries(entries.filter((e) => e.id !== id));
       setShowViewModal(false);
       setSelectedEntry(null);
